@@ -7,21 +7,22 @@
     <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width" />
     <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src *" />
     <title>Hello World</title>
+  <script src="lib/ionic/js/ionic.bundle.js"></script>
   <script src="lib/angular/angular.min.js"></script>
   <script src="lib/ngCordova/dist/ng-cordova.js"></script>
   <script src="cordova.js"></script>
 
   <script>
-    angular.module('MyApp', ['ngCordova'])
-          .run(function ($cordovaNetwork, $cordovaBatteryStatus, $cordovaLocalNotification, $cordovaPush) {
-            /*$ionicPlatform.ready(function () {
+    angular.module('MyApp', ['ionic','ngCordova'])
+          .run(function ($ionicPlatform, $cordovaNetwork, $cordovaBatteryStatus, $cordovaLocalNotification, $cordovaPush) {
+            $ionicPlatform.ready(function () {
               $rootScope.$on("$cordovaNetwork:offline", function (event, result) {
                 alert("Device is now Offline!");
               });
               $rootScope.$on("$cordovaNetwork:online", function (event, result) {
                 alert("Device is Online!");
               });
-            })*/
+            })
           })
           .config(function ($cordovaInAppBrowserProvider) {
             var browserOptions = {
