@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width" />
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src *" />
+    <title>Hello World</title>
+  <script src="lib/angular/angular.min.js"></script>
+  <script src="lib/ngCordova/dist/ng-cordova.js"></script>
+  <script src="cordova.js"></script>
+
+  <script>
+    angular.module('MyApp', ['ngCordova'])
+          .run(function ($cordovaNetwork, $cordovaBatteryStatus, $cordovaLocalNotification, $cordovaPush) {
+            /*$ionicPlatform.ready(function () {
+              $rootScope.$on("$cordovaNetwork:offline", function (event, result) {
+                alert("Device is now Offline!");
+              });
+              $rootScope.$on("$cordovaNetwork:online", function (event, result) {
+                alert("Device is Online!");
+              });
+            })*/
+          })
+          .config(function ($cordovaInAppBrowserProvider) {
+            var browserOptions = {
+              location: "yes",
+              toolbar: "yes"
+            };
+            $cordovaInAppBrowserProvider.setDefaultOptions(browserOptions);
+          })
+         .controller('MainCtrl', function ($scope, $rootScope, $cordovaInAppBrowser, $cordovaBarcodeScanner) {
+            $scope.testvalue = "WJ Testing";
+            $scope.scan = function () {
+              $cordovaBarcodeScanner
+                .scan()
+                .then(function (result) {
+                  $scope.scanResult = result;
+                }, function (err) {
+                  $scope.scanResult = 'SCAN ERROR (see console)';
+                  console.error(err);
+                });
+            };
+            $scope.openBrowser = function () {
+              document.addEventListener('deviceready', function () {
+
+                var options = {
+                  location: "no"
+                };
+
+                $cordovaInAppBrowser.open('http://ngcordova.com', '_blank', options).then(function () {
+                  console.log("InAppBrowser opened http://ngcordova.com successfully");
+                }, function (error) {
+                  console.log("Error: " + error);
+                });
+
+              }, false);
+            };
+
+            document.addEventListener('deviceready', function () {
+
+              $rootScope.$on("$cordovaInAppBrowser:exit", function (event, result) {
+                alert("Exited Browser");
+                console.log(JSON.stringify(result));
+              });
+
+
+              $rootScope.$on("$cordovaInAppBrowser:loadstop", function (event, result) {
+                alert("Load Stop event");
+                console.log(JSON.stringify(result));
+              })
+            }, false);
+          });
+
+  </script>
+</head>
+<body ng-app="MyApp">
+
+<div ng-controller="MainCtrl">
+
+<br>
+<br>
+{{testvalue}}
+<br>
+    <button ng-click="scan()" class="button button-block button-primary">Scan</button>
+    <div class="card">
+      <div class="item item-divider">Barcode Results</div>
+      <div class="item">Text: {{scanResult.text}}</div>
+      <div class="item">Format: {{scanResult.format}}</div>
+      <div class="item">Cancelled: {{scanResult.cancelled}}</div>
+    </div>
+
+
+    <button class="button button-block button-positive" ng-click="openBrowser()">Open Browser</button>
+
+
+
+
+
+</div>
+</body>
+
+</html>

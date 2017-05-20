@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="msapplication-tap-highlight" content="no" />
+  <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width" />
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src *" />
+  <title>ng-cordova demo</title>
+
+  <script src="lib/ionic/js/ionic.bundle.js"></script>
+  <link href="css/materialize.css" type="text/css" rel="stylesheet" media="screen,projection"/>
+  <link href="css/index.css" type="text/css" rel="stylesheet" media="screen,projection"/>
+  <link href="css/font-awesome.min.css" type="text/css" rel="stylesheet"/>
+  <link href="fonts/MaterialIcons.css" type="text/css" rel="stylesheet"/>
+  <script type="text/javascript" src="js/angular.min.js"></script>
+  <script type="text/javascript" src="js/ngMask.min.js"></script>
+  <script type="text/javascript" src="js/angular-route.min.js"></script>
+  <script type="text/javascript" src="js/materialize.min.js"></script>
+  <script type="text/javascript" src="js/angular-materialize.min.js"></script>
+  <script src="js/init.js"></script>
+  <script src="lib/ngCordova/dist/ng-cordova.js"></script>
+  <script src="cordova.js"></script>
+  <script>
+    angular.module('MyApp', ['ionic',
+                            'ngCordova',
+                            'ngRoute',
+                            'ngMask',
+                            'ui.materialize'
+          ])
+          .run(function ($rootScope, $location, $route, $http, $timeout, $ionicPlatform, $cordovaNetwork, $cordovaBatteryStatus, $cordovaLocalNotification, $cordovaPush) {
+            $ionicPlatform.ready(function () {
+              $rootScope.$on("$cordovaNetwork:offline", function (event, result) {
+                alert("Device is now Offline!");
+              });
+              $rootScope.$on("$cordovaNetwork:online", function (event, result) {
+                alert("Device is Online!");
+              });
+            })
+
+            $rootScope.$on("$routeChangeStart", function (event, next, current) {
+                $rootScope.authenticated = false;
+                $http.get('https://wms-lite.website/function/check_login.php').success(function (results) {
+                    if (results.uid) {
+                      $rootScope.authenticated = true;
+                      $rootScope.uid = results.uid;
+                      $rootScope.wms_profile_id = results.wms_profile_id;
+                      $rootScope.wms_user_id = results.wms_user_id;
+                      $rootScope.wms_user_login = results.wms_user_login;
+                      $rootScope.wms_user_password = results.wms_user_password;
+                      $rootScope.wms_user_type = results.wms_user_type;
+                      $rootScope.wms_user_name = results.wms_user_name;
+                      $rootScope.wms_user_time_zone = results.wms_user_time_zone;
+                      $rootScope.wms_permition = results.wms_permition;
+                    } else {
+                      var nextUrl = next.$$route.originalPath;
+                      if (nextUrl == '/login' || 
+                          nextUrl == '/product_detail/:orderId') {    
+                 
+                      } else {
+                         // $location.path("/login");
+                      }
+                    }
+                });
+              
+            });
+            var history = [];
+
+            $rootScope.$on('$routeChangeSuccess', function() {
+                history.push($location.$$path);
+            });
+
+            $rootScope.back = function () {
+                var prevUrl = history.length > 1 ? history.splice(-2)[0] : "/";
+                $location.path(prevUrl);
+                $rootScope.preload('reload');
+            //Materialize.toast("Back", 500);
+            };
+            $rootScope.refresh = function () {
+                $route.reload();
+                $rootScope.preload('reload');
+            //Materialize.toast("Refresh", 500);
+            };
+              var cdtimer;
+              var cdpreload=function(){
+                cdtimer=$timeout(function(){
+                  if($rootScope.vispreload == "reload"){
+                    $rootScope.vispreload = 'network';
+                  }
+                },25000);
+              }; 
+            $rootScope.startTimeout = function () { 
+                cdpreload();
+            }  
+            $rootScope.stopTimeout = function () {  
+                $timeout.cancel(cdtimer);  
+            }  
+            $rootScope.preload = function (type) {
+              $rootScope.vispreload = type;
+              if(type == "reload"){
+                 $rootScope.startTimeout();
+              }else{  
+                 $rootScope.stopTimeout();
+              }
+            };
+            $rootScope.preload('reload');
+          })
+          .config(function ($stateProvider, $urlRouterProvider, $routeProvider, $locationProvider, $cordovaFacebookProvider, $cordovaAppRateProvider, $cordovaInAppBrowserProvider) {
+            var browserOptions = {
+              location: "yes",
+              toolbar: "yes"
+            };
+            document.addEventListener("deviceready", function () {
+              var preferences = {
+                iosURL: "some URL",
+                appName: 'APP NAME',
+                language: 'fr'
+              };
+              $cordovaAppRateProvider.setPreferences(preferences);
+            }, false);
+            $cordovaInAppBrowserProvider.setDefaultOptions(browserOptions);
+
+            $routeProvider.when("/login", {
+                            templateUrl : "view/login.html"
+                          })
+                          .when("/operation/:were_id", {
+                            templateUrl : "view/operation.html",
+                            controller: 'operationCtrl'
+                          })
+                          .when("/home", {
+                            templateUrl : "view/home.html"
+                          })
+                          .when("/incoming/:were_id", {
+                            templateUrl : "view/incoming.html",
+                            controller: 'IncomingCtrl'
+                          })
+                          .when("/outgoing/:were_id/:out_id", {
+                            templateUrl : "view/outgoing.html",
+                            controller: 'OutgoingCtrl'
+                          })
+                          .when("/outgoing_job_list/:were_id", {
+                            templateUrl : "view/outgoing_job_list.html",
+                            controller: 'OutgoingJobCtrl'
+                          })
+                          .otherwise({
+                            redirectTo: '/login'
+                          });
+          })
+          .filter('cut', function () {
+                return function (value, wordwise, max, tail) {
+                    if (!value) return '';
+
+                    max = parseInt(max, 10);
+                    if (!max) return value;
+                    if (value.length <= max) return value;
+
+                    value = value.substr(0, max);
+                    if (wordwise) {
+                        var lastspace = value.lastIndexOf(' ');
+                        if (lastspace != -1) {
+                          //Also remove . and , so its gives a cleaner result.
+                          if (value.charAt(lastspace-1) == '.' || value.charAt(lastspace-1) == ',') {
+                            lastspace = lastspace - 1;
+                          }
+                          value = value.substr(0, lastspace);
+                        }
+                    }
+
+                    return value + (tail || ' …');
+                };  
+          })
+          .filter('unsafe', function($sce) {
+            return function(val) {
+                return $sce.trustAsHtml(val);
+            };
+          })
+          .directive('imageonload', function() {
+            return {
+                restrict: 'A',
+                link: function($scope, element, attrs) {
+                    element.bind('load', function() {
+                $scope.$apply(function() {
+                  $scope.visible = true;
+                });
+                    });
+                    element.bind('error', function(){
+                        //alert('image could not be loaded');
+                    });
+                }
+            };
+          })
+          .directive('icOnly', function () {
+            return {
+                require: 'ngModel',
+                link: function (scope, element, attr, ngModelCtrl) {
+                    function fromUser(text) {
+                        if (text) {
+                            var transformedInput = text.replace(/[^0-9^\d-]/g, '');
+
+                            if (transformedInput !== text) {
+                                ngModelCtrl.$setViewValue(transformedInput);
+                                ngModelCtrl.$render();
+                            }
+                            return transformedInput;
+                        }
+                        return undefined;
+                    }            
+                    ngModelCtrl.$parsers.push(fromUser);
+                }
+            };
+          })
+          .directive('numbersOnly', function () {
+            return {
+                require: 'ngModel',
+                link: function (scope, element, attr, ngModelCtrl) {
+                    function fromUser(text) {
+                        if (text) {
+                            var transformedInput = text.replace(/[^0-9]/g, '');
+
+                            if (transformedInput !== text) {
+                                ngModelCtrl.$setViewValue(transformedInput);
+                                ngModelCtrl.$render();
+                            }
+                            return transformedInput;
+                        }
+                        return undefined;
+                    }            
+                    ngModelCtrl.$parsers.push(fromUser);
+                }
+            };
+          })
+          .controller('InputController', function (){
+            $('select').material_select();
+            $('.datepicker').pickadate({
+                selectMonths: true, // Creates a dropdown to control month
+                selectYears: 30 // Creates a dropdown of 15 years to control year
+            });
+            $('.materialboxed').materialbox();
+          })
+         .controller('MainCtrl', function ($scope, $rootScope, $route, $routeParams, $location, $http, $timeout, $cordovaInAppBrowser, $cordovaBarcodeScanner) {
+            $rootScope.var_back = {
+                route: "",
+                name: ""
+            };
+
+            $scope.model = {
+              chips: ["Item1", "Item2"],
+              site: {
+                phone: "+49174406053684",
+                email: ""
+              },
+              set_sidebar: [
+                 {  
+                "name": "Home",
+                "route": "home",
+                "img": "R-Home.png",
+              },{
+                "name": "Login",
+                "route": "login",
+                "img": "R-Login.png",
+              },{
+                "name": "Archive",
+                "route": "archive",
+                "img": "R-Archive.png",
+                 }
+              ],
+              set_logout: [
+                 {  
+                "name": "Home", 
+                "route": "home",
+                "img": "R-Home.png",
+              },{
+                "name": "My Account",
+                "type": "gourl", 
+                "route": "account",
+                "img": "R-My-Acc.png",
+              },{
+                "name": "Feedback", 
+                "route": "feedback",
+                "img": "R-Feedback.png",
+              },{
+                "name": "Archive",
+                "route": "archive",
+                "img": "R-Archive.png",
+              },{
+                "name": "Logout",
+                "route": "logout",
+                "img": "R-Login.png",
+                 }
+              ]
+            };
+            
+            
+             // Share button
+             $scope.openmodel = function(add) { 
+              $('#modal1').modal('open'); 
+             };
+             // Share button
+             $scope.ShareProduct = function(img, title, hreflink) { 
+               window.plugins.socialsharing.share('', title, img, hreflink); 
+             };
+            $scope.goToSite = function(site, $event) {
+            
+              if(site == "logout"){
+                  $rootScope.authenticated = false;
+                  $rootScope.uid = "";
+                  $rootScope.wms_profile_id = "";
+                  $rootScope.wms_user_id = "";
+                  $rootScope.wms_user_login = "";
+                  $rootScope.wms_user_password = "";
+                  $rootScope.wms_user_type = "";
+                  $rootScope.wms_user_name = "";
+                  $rootScope.wms_user_time_zone = "";
+                  $rootScope.wms_permition = "";
+
+                  $http.get('https://wms-lite.website/function/logout.php').success(function(data) {
+                    $location.path('login');
+                    $('.button-collapse').sideNav('hide');
+                  });
+                }else if(site == "feedback"){
+                  window.location.href = 'mailto:enquiry@publicgold.com.my?Subject=Feedback';
+                }else{
+                  $location.path(site);
+                  $rootScope.preload('reload');
+                  $('.button-collapse').sideNav('hide');
+              }
+            };
+            // >>>>>>>>>>>>>>>>>>>>>>>>>>>              <<<<<<<<<<<<<<<<<<<<<<<<<<<
+            $scope.testvalue = "WJ Testing";
+            $scope.scan = function () {
+              $cordovaBarcodeScanner
+                .scan()
+                .then(function (result) {
+                  $scope.scanResult = result;
+                }, function (err) {
+                  $scope.scanResult = 'SCAN ERROR (see console)';
+                  console.error(err);
+                });
+            };
+            $scope.openBrowser = function () {
+              document.addEventListener('deviceready', function () {
+
+                var options = {
+                  location: "no"
+                };
+
+                $cordovaInAppBrowser.open('http://ngcordova.com', '_blank', options).then(function () {
+                  console.log("InAppBrowser opened http://ngcordova.com successfully");
+                }, function (error) {
+                  console.log("Error: " + error);
+                });
+
+              }, false);
+            };
+
+            document.addEventListener('deviceready', function () {
+
+              $rootScope.$on("$cordovaInAppBrowser:exit", function (event, result) {
+                alert("Exited Browser");
+                console.log(JSON.stringify(result));
+              });
+
+
+              $rootScope.$on("$cordovaInAppBrowser:loadstop", function (event, result) {
+                alert("Load Stop event");
+                console.log(JSON.stringify(result));
+              })
+            }, false);
+            // >>>>>>>>>>>>>>>>>>>>>>>>>>>              <<<<<<<<<<<<<<<<<<<<<<<<<<<
+          })
+         .controller('LoginCtrl', function ($scope, $rootScope, $route, $routeParams, $location, $http, $timeout, $cordovaInAppBrowser, $cordovaBarcodeScanner) {
+            $rootScope.var_back = {
+                route: "",
+                name: ""
+            };
+            $rootScope.preload('no');
+
+            $scope.LoginClick = function() {
+               $http.post("https://wms-lite.website/function/login.php",{'username': $scope.newLogin.username, 'password': $scope.newLogin.password}).success(function(data, status, headers, config){
+               //$http.post("https://wms-lite.website/function/login.php",{'username': 'testzack', 'password': 'testzack'}).success(function(data, status, headers, config){
+            
+             if (data.status == "ok") {
+                    
+                  alert(data.message);
+                      //Materialize.toast(data.message, 4000);
+                   // $location.path('home');
+                 }else{
+                   
+                  alert(data.message);
+                      // Materialize.toast(data.message, 4000);
+                 }
+             });
+             };  
+          });
+
+  </script>
+</head>
+
+<body ng-app="MyApp">
+
+<div ng-controller="MainCtrl">
+
+   <nav  style="z-index:1002;width:100%;  border-bottom:#FC0 solid 4px;max-height: 80px;height: 80px; position: fixed; top: 0;">
+      
+     
+      
+    
+     <!-- <div style='position:absolute;top:25px;padding-left:65px;float:left;margin:1% 1% 1% 20%' ng-if="login == 'True' && uid != ''">
+        <span style='padding-left:5px;display:block;line-height:53px;float:left;font-size:20px;'>Hi {{pg_name}}</span>
+      </div>-->
+      <img src="images/expertlog_logo.png" height="40em" ng-hide="var_back.route" style="position:absolute; top:20px; padding-left: 25%; display: inline;"  alt=""/>
+      <img src="images/expertlog_logo.png" height="40em" ng-show="var_back.route" style="position:absolute; top:20px; padding-right: 10px; right: 5px; display: inline;"  alt=""/>
+      <!--href="#" data-activates="mobile-demo"--><a ng-click="goToSite(var_back.route, $event)" ng-show="var_back.route" style="position:absolute; top:28px; padding-left:10px; left: 5px; display: inline;">
+        <i class="fa fa-chevron-left" aria-hidden="true" style="font-size:140%;"> {{var_back.name}}</i> 
+      </a>
+      
+      
+      
+      
+      <ul class="side-nav" id="mobile-demo">
+        <li style="height:20px"></li>
+        <li ng-repeat="data_set_sidebar in model.set_sidebar" ng-click="goToSite(data_set_sidebar.route, $event)" ng-if="login != 'True'">
+        <a><img src="images/Round_icon/{{data_set_sidebar.img}}" width="27px" style="margin-top:10px"/><span style="position:absolute;">&nbsp;&nbsp;{{data_set_sidebar.name}}</span></a>
+        </li>
+        <li ng-repeat="data_set_logout in model.set_logout" ng-click="goToSite(data_set_logout.route, $event)" ng-if="login == 'True' && uid != ''">
+        <a><img src="images/Round_icon/{{data_set_logout.img}}" width="27px" style="margin-top:10px"/><span style="position:absolute;">&nbsp;&nbsp;{{data_set_logout.name}}</span></a>
+        </li>
+        <li style="height:60px"></li>
+      </ul>
+    </nav>
+    
+
+<br>
+<br>
+{{testvalue}}
+<br>
+    <button ng-click="scan()" class="button button-block button-primary">Scan</button>
+    <div class="card">
+      <div class="item item-divider">Barcode Results</div>
+      <div class="item">Text: {{scanResult.text}}</div>
+      <div class="item">Format: {{scanResult.format}}</div>
+      <div class="item">Cancelled: {{scanResult.cancelled}}</div>
+    </div>
+
+
+    <button class="button button-block button-positive" ng-click="openBrowser()">Open Browser</button>
+
+
+    <button class="btn waves-effect waves-light" ng-click="openBrowser()">Login
+      <i class="material-icons right">lock_open</i>
+    </button>
+    
+    <div ng-show="vispreload == 'no'">
+      <div ng-view></div>
+    </div>
+
+    <div ng-show="vispreload != 'no'" style="width:90%; margin:160px auto 0 auto;">  
+      <div ng-show="vispreload == 'network'" >
+          <div style="width:90%; margin:0 auto 0 auto;" ><br><br>
+              <img src="images/no_network.png" style="width:100px;" ><br><br>
+              <span style="font-size:125%;">Unable to connect to the Internet.</span><br><br>
+              <span style="font-size:110%;">Your device is offline.</span><br>
+              Try :<br>
+              <ul>
+               <li>Turning off airplane mode</li>
+               <li>Turning on mobile data or Wi-Fi</li>
+               <li>Checking the signal in your are</li>           
+              </ul>
+              <div class="input-field col s12">
+               <button class="btn waves-effect waves-light" onClick="window.location.href = 'index.html';" style="width:100%">
+                 <i class="fa fa-repeat" aria-hidden="true" style="font-size:120%;"></i>  Reload
+               </button>
+              </div>
+          </div>
+      </div> 
+      
+  
+      <div ng-show="vispreload == 'reload'">
+      <div style="height:100px;"></div> 
+      <center>
+        <div class="preloader-wrapper big active">
+          <div class="spinner-layer spinner-green-only">
+            <div class="circle-clipper left">
+              <div class="circle"></div>
+            </div><div class="gap-patch">
+              <div class="circle"></div>
+            </div><div class="circle-clipper right">
+              <div class="circle"></div>
+            </div>
+          </div>
+        </div>
+      </center>
+      </div> 
+      <!--
+      <div ng-show="vispreload == 'checkout'">
+      <div style="height:100px;"></div> 
+      <center>
+        <div class="preloader-wrapper big active">
+          <div class="spinner-layer spinner-green-only">
+            <div class="circle-clipper left">
+              <div class="circle"></div>
+            </div><div class="gap-patch">
+              <div class="circle"></div>
+            </div><div class="circle-clipper right">
+              <div class="circle"></div>
+            </div>
+          </div>
+        </div>
+        Please wait for checkout.<br>
+        if more than one minute, please try again later.<br>
+        Thank you...
+      </center>
+      </div> -->
+    </div>
+
+    </div>
+
+</body>
+
+</html>
